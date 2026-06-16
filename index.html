@@ -115,6 +115,57 @@ DO NOT MODIFY ENGINE OR UI WITHOUT AUTHORISATION
       width: 20px;
       font-weight: bold;
     }
+
+    /* ── Clickable MCQ buttons ── */
+    .options { list-style: none; padding: 0; margin: 0 0 10px; }
+    .opt-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      margin-bottom: 7px;
+      padding: 9px 14px;
+      background: #f0f4ff;
+      color: #1a1a2e;
+      border: 2px solid #c5cbe0;
+      border-radius: 6px;
+      font-size: 0.97rem;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .opt-btn:hover:not(:disabled) { background: #dde5ff; border-color: #134b9b; }
+    .opt-btn:disabled { cursor: default; }
+    .opt-label {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      background: #134b9b;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .opt-btn.opt-correct { background: #e8f5e9; border-color: #2e7d32; }
+    .opt-btn.opt-correct .opt-label { background: #2e7d32; }
+    .opt-btn.opt-chosen-correct { background: #c8e6c9; border-color: #1b5e20; }
+    .opt-btn.opt-chosen-correct .opt-label { background: #1b5e20; }
+    .opt-btn.opt-chosen-wrong { background: #ffebee; border-color: #c8102e; }
+    .opt-btn.opt-chosen-wrong .opt-label { background: #c8102e; }
+
+    /* ── Feedback strip ── */
+    .feedback {
+      padding: 8px 14px;
+      border-radius: 5px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-bottom: 10px;
+    }
+    .feedback-correct { background: #e8f5e9; color: #1b5e20; border: 1px solid #a5d6a7; }
+    .feedback-wrong   { background: #ffebee; color: #b71c1c; border: 1px solid #ef9a9a; }
     .solution {
       border-top: 1px solid #dde3f5;
       margin-top: 12px;
@@ -228,7 +279,20 @@ DO NOT MODIFY ENGINE OR UI WITHOUT AUTHORISATION
     </div>
 
     <div class="question-diagram" id="questionDiagram" style="display:none;"></div>
+    <div id="scoreBar" style="display:none; align-items:center; gap:10px; margin:0 0 10px; flex-wrap:wrap;">
+      <span style="font-size:0.85rem; color:#555; font-weight:600;">Score:</span>
+      <span style="font-size:0.85rem; color:#2e7d32; font-weight:700;">✓ <span id="scoreCorrect">0</span></span>
+      <span style="font-size:0.85rem; color:#c8102e; font-weight:700;">✗ <span id="scoreWrong">0</span></span>
+      <span style="font-size:0.85rem; color:#134b9b; font-weight:700;"><span id="scorePct">—</span></span>
+      <div style="flex:1; min-width:80px; background:#e7eefe; border-radius:999px; height:8px; overflow:hidden;">
+        <div id="scoreBarFill" style="height:100%; background:#134b9b; border-radius:999px; width:0%; transition:width 0.3s;"></div>
+      </div>
+      <span id="scoreBarLabel" style="font-size:0.8rem; color:#888;"></span>
+    </div>
+
     <ul class="options" id="optionsList"></ul>
+
+    <div id="feedback" style="display:none;"></div>
 
     <div class="solution" id="solutionBlock">
       <strong>Worked solution</strong>
@@ -376,8 +440,10 @@ function makeFractionOfAmount(){
 
 function makeRatioSimplify(){
   const k = choice([2,3,4,5,6,7,8,9,10,12]);
-  const a = k * choice([2,3,4,5,6]);
-  const b = k * choice([3,4,5,6,7]);
+  const aFact = choice([2,3,4,5,6]);
+  const bFact = choice([3,4,5,6,7].filter(v => v !== aFact));
+  const a = k * aFact;
+  const b = k * bFact;
   const g = gcd(a,b);
   const correctText = `${a/g} : ${b/g}`;
   const mcq = buildMCQOptions(correctText, [`${a}:${b}`, `${a/g}:${b}`, `${a}:${b/g}`]);
@@ -446,7 +512,7 @@ function makePercentChange(){
       id: makeID("PCHG"),
       topic: "Number",
       skill: "Percentage change",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `The price of ${ctx.item} ${ctx.verb} £${oldVal} last year.\nThis year it ${ctx.verb === "cost" ? "costs" : "is worth"} £${newVal}.\nWhat is the percentage ${dir}?`,
       options: mcq.options,
       correctIndex: mcq.correctIndex,
@@ -461,17 +527,17 @@ function makePercentChange(){
     const mult = dir === "increase" ? (100 + pct) : (100 - pct);
     if((oldVal * mult) % 100 !== 0) return makePercentChange();
     const newVal = (oldVal * mult) / 100;
-    const correctText = String(newVal);
-    const wrong1 = String(oldVal + pct);
-    const wrong2 = String(dir === "increase" ? (oldVal*(100-pct))/100 : (oldVal*(100+pct))/100);
-    if(!Number.isInteger(Number(wrong2))) return makePercentChange();
-    const mcq = buildMCQOptions(correctText, [wrong1, wrong2, String(oldVal)]);
+    const w1num = oldVal + pct;
+    const w2num = dir === "increase" ? (oldVal*(100-pct))/100 : (oldVal*(100+pct))/100;
+    if(!Number.isInteger(w2num)) return makePercentChange();
+    const correctText = `£${newVal}`;
+    const mcq = buildMCQOptions(correctText, [`£${w1num}`, `£${w2num}`, `£${oldVal}`]);
     if(!mcq) return makePercentChange();
     return {
       id: makeID("PCHG"),
       topic: "Number",
       skill: "Percentage change",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `${ctx.item.charAt(0).toUpperCase() + ctx.item.slice(1)} ${ctx.verb} £${oldVal}.\nThe price ${dir === "increase" ? "increases" : "decreases"} by ${pct}%.\nWhat is the new price?`,
       options: mcq.options,
       correctIndex: mcq.correctIndex,
@@ -495,7 +561,7 @@ function makePercentChange(){
     id: makeID("PCHG"),
     topic: "Number",
     skill: "Percentage change",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `After a ${pct}% ${dir}, ${ctx.item} ${ctx.verb === "cost" ? "costs" : "is worth"} £${finalVal}.\nWhat was the original price?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -526,7 +592,7 @@ function makeReversePercentageReceipt(){
     id: makeID("REV%"),
     topic: "Number",
     skill: "Reverse percentage",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A ${item.shop} receipt shows a ${item.name} was sold for ${moneyFromPence(sale * 100)} after a ${pct}% discount.\nWhat was the original price?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -543,7 +609,7 @@ function makeSimpleInterest(){
   const correctText = moneyFromPence(total * 100);
   const wrong1 = moneyFromPence(interest * 100);
   const wrong2 = moneyFromPence((principal + principal * rate / 100) * 100);
-  const wrong3 = moneyFromPence(Math.round(principal * Math.pow(1 + rate/100, years) * 100));
+  const wrong3 = moneyFromPence((principal + principal * rate * (years + 1) / 100) * 100);
   const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
   if(!mcq) return makeSimpleInterest();
   return {
@@ -669,7 +735,7 @@ function makeSpeedQuestion(){
       id: makeID("SPD"),
       topic: "Number",
       skill: "Speed, distance, time",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `${ctx.subject} ${ctx.verb} ${distance} ${ctx.distUnit} at ${speed} ${ctx.unit}.\nHow long does the journey take?`,
       options: mcq.options,
       correctIndex: mcq.correctIndex,
@@ -687,7 +753,7 @@ function makeSpeedQuestion(){
     id: makeID("SPD"),
     topic: "Number",
     skill: "Speed, distance, time",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${ctx.subject} ${ctx.verb} ${distance} ${ctx.distUnit} in ${time} hours.\nWhat is the average speed?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -731,7 +797,7 @@ function makeDensityQuestion(){
       id: makeID("DNS"),
       topic: "Number",
       skill: "Density, mass, volume",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `A ${obj.name} has density ${density} g/cm³ and volume ${volume} cm³.\nFind the mass.`,
       options: mcq.options,
       correctIndex: mcq.correctIndex,
@@ -745,7 +811,7 @@ function makeDensityQuestion(){
     id: makeID("DNS"),
     topic: "Number",
     skill: "Density, mass, volume",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A ${obj.name} has density ${density} g/cm³ and mass ${mass} g.\nFind the volume.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -771,7 +837,7 @@ function makeBoundsErrorInterval(){
       id: makeID("BND"),
       topic: "Number",
       skill: "Error intervals",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `A length L is measured as ${x.toFixed(1)} cm, correct to 1 decimal place.\nWrite the error interval for L.`,
       options: mcq.options,
       correctIndex: mcq.correctIndex,
@@ -792,7 +858,7 @@ function makeBoundsErrorInterval(){
     id: makeID("BND"),
     topic: "Number",
     skill: "Error intervals",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A length L is measured as ${cm} cm, correct to the nearest centimetre.\nWrite the error interval for L.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -822,7 +888,7 @@ function makeCompoundPercent(){
     id: makeID("COMP"),
     topic: "Number",
     skill: "Compound percentage",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${ctx.desc} ${moneyFromPence(start*100)} ${ctx.dir} by ${pct}% each year for ${years} years.\nWhat is the value after ${years} years?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -850,7 +916,7 @@ function makeDirectProportion(){
     id: makeID("PROP"),
     topic: "Number",
     skill: "Direct proportion",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${ctx.x} and ${ctx.y} are directly proportional.\nWhen ${ctx.x} = ${x1}, ${ctx.y} = ${y1}.\nFind ${ctx.y} when ${ctx.x} = ${x2}.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -891,7 +957,7 @@ function makeThoughtNumberDivide_F(){
     topic: "Algebra",
     skill: "Forming and solving equations",
     difficulty: "Foundation / Core",
-    question: `${name} thinks of a number.\nHe divides it by ${k} and gets ${result}.\nWhat number did ${name} think of?`,
+    question: `${name} thinks of a number.\nThey divide it by ${k} and get ${result}.\nWhat number did ${name} think of?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
     solution: `Let the number be n.\nn ÷ ${k} = ${result}\nn = ${result} × ${k} = ${n*k}`
@@ -911,7 +977,7 @@ function makeThoughtNumberTwoStep_F(){
     id: makeID("FALG"),
     topic: "Algebra",
     skill: "Two-step equations",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${name} thinks of a number.\nShe multiplies it by ${a} and then adds ${b}.\nThe answer is ${result}.\nWhat was ${name}'s number?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -921,12 +987,12 @@ function makeThoughtNumberTwoStep_F(){
 
 function makeTrueFalsePercent_F(){
   const statements = [
-    {text:"10% of 80 is the same as 80% of 10", correct:true},
-    {text:"25% of 40 is the same as 40% of 25", correct:true},
-    {text:"To find 50% of a number, divide it by 2", correct:true},
-    {text:"60% as a decimal is 6.0", correct:false},
-    {text:"1/3 as a decimal is exactly 0.3", correct:false},
-    {text:"To find 10%, multiply by 10", correct:false}
+    {text:"10% of 80 is the same as 80% of 10", correct:true, explanation:"Both equal 8. This is because a% of b always equals b% of a."},
+    {text:"25% of 40 is the same as 40% of 25", correct:true, explanation:"Both equal 10. This works because percentages are commutative: a% of b = b% of a."},
+    {text:"To find 50% of a number, divide it by 2", correct:true, explanation:"50% means one half, so dividing by 2 is correct. e.g. 50% of 60 = 60 ÷ 2 = 30."},
+    {text:"60% as a decimal is 6.0", correct:false, explanation:"False. 60% = 60 ÷ 100 = 0.6, not 6.0."},
+    {text:"1/3 as a decimal is exactly 0.3", correct:false, explanation:"False. 1/3 = 0.333... (recurring). 0.3 = 3/10, which is NOT the same as 1/3."},
+    {text:"To find 10%, multiply by 10", correct:false, explanation:"False. To find 10%, divide by 10. For example, 10% of 80 = 80 ÷ 10 = 8."}
   ];
   const s = choice(statements);
   const answer = s.correct ? "True" : "False";
@@ -940,18 +1006,18 @@ function makeTrueFalsePercent_F(){
     question: `True or False?\n"${s.text}"`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
-    solution: `${answer}${s.correct ? " — this statement is correct." : " — this statement is incorrect."}`
+    solution: `${answer}.\n${s.explanation}`
   };
 }
 
 function makeTrueFalseConversion_F(){
   const statements = [
-    {text:"0.3 is the same as 30%", correct:true},
-    {text:"1/4 as a decimal is 0.25", correct:true},
-    {text:"3/5 as a percentage is 60%", correct:true},
-    {text:"To convert a fraction to a decimal, divide the denominator by the numerator", correct:false},
-    {text:"0.07 is the same as 7%", correct:true},
-    {text:"1/8 as a decimal is 0.8", correct:false}
+    {text:"0.3 is the same as 30%", correct:true, explanation:"0.3 × 100 = 30%."},
+    {text:"1/4 as a decimal is 0.25", correct:true, explanation:"1 ÷ 4 = 0.25. Check: 0.25 × 4 = 1 ✓"},
+    {text:"3/5 as a percentage is 60%", correct:true, explanation:"3 ÷ 5 = 0.6, and 0.6 × 100 = 60%."},
+    {text:"To convert a fraction to a decimal, divide the denominator by the numerator", correct:false, explanation:"False. You divide the numerator by the denominator. e.g. 3/4 = 3 ÷ 4 = 0.75."},
+    {text:"0.07 is the same as 7%", correct:true, explanation:"0.07 × 100 = 7%. Moving the decimal point two places right gives 7%."},
+    {text:"1/8 as a decimal is 0.8", correct:false, explanation:"False. 1 ÷ 8 = 0.125. Note: 0.8 = 4/5, not 1/8."}
   ];
   const s = choice(statements);
   const answer = s.correct ? "True" : "False";
@@ -965,7 +1031,7 @@ function makeTrueFalseConversion_F(){
     question: `True or False?\n"${s.text}"`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
-    solution: `${answer}${s.correct ? " — this statement is correct." : " — this statement is incorrect."}`
+    solution: `${answer}.\n${s.explanation}`
   };
 }
 
@@ -1150,7 +1216,7 @@ function makeSubstitutionIntoFormula(){
       make: () => {
         const n = choice([4,5,6,7,8,10]);
         const C = 3*n + 5;
-        return {vals:{n}, answer:C, answerStr:`£${C}`, solStr:`C = 3 × ${n} + 5 = ${3*n} + 5 = ${C}`};
+        return {vals:{n}, answer:C, answerStr:`${C}`, solStr:`C = 3 × ${n} + 5 = ${3*n} + 5 = ${C}`};
       }
     }
   ];
@@ -1169,7 +1235,7 @@ function makeSubstitutionIntoFormula(){
     topic: "Algebra",
     skill: "Substitution into formulae",
     difficulty: "Foundation / Core",
-    question: `Use the formula: ${f.formula}\nFind the value when ${varList}.`,
+    question: `Use the formula: ${f.formula}\nFind ${f.name === "cost" ? "C" : "the value"} when ${varList}.${f.name === "cost" ? "\n(C = total cost in pence; n = number of items)" : ""}`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
     solution: solStr
@@ -1216,7 +1282,7 @@ function makeSequenceNthTermQuestion(){
     id: makeID("ALG"),
     topic: "Algebra",
     skill: "Sequences — nth term",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `Find the nth term of the sequence:\n${seq.join(", ")}`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1277,7 +1343,7 @@ function makeInequalityQuestion(){
     id: makeID("ALG"),
     topic: "Algebra",
     skill: "Linear inequalities",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `Solve: ${a}n + ${b} ${relation} ${c}`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1300,7 +1366,7 @@ function makeEquationFromWordsQuestion(){
     id: makeID("ALG"),
     topic: "Algebra",
     skill: "Forming equations from words",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A number p is multiplied by ${a} and then ${b} is added. The result is ${total}.\nWhich equation represents this?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1358,26 +1424,29 @@ function makeRectanglePerimeterQuestion(){
 }
 
 function makeCompoundPerimeterQuestion(){
-  const a = randInt(4, 12);
-  const b = randInt(3, 9);
-  const c = randInt(2, a-1);
-  const d = randInt(2, b-1);
-  const perimeter = 2*a + 2*b;
+  // L-shape: large rectangle (A×B) with a corner rectangle (c×d) removed.
+  // Perimeter = 2A + 2B (same as bounding box — the removed corner adds 2 sides that
+  // replace the 2 sides removed, so total stays 2(A+B)). We make this explicit.
+  const A = randInt(6, 14);
+  const B = randInt(4, 10);
+  const c = randInt(2, A-2);
+  const d = randInt(2, B-2);
+  const perimeter = 2*A + 2*B;  // L-shape perimeter always = bounding-box perimeter
   const correctText = `${perimeter} cm`;
-  const wrong1 = `${a*b} cm`;
-  const wrong2 = `${a+b} cm`;
-  const wrong3 = `${perimeter + 2} cm`;
+  const wrong1 = `${A*B - c*d} cm`;          // area mistake
+  const wrong2 = `${2*(A-c) + 2*(B-d)} cm`; // inner rectangle perimeter
+  const wrong3 = `${perimeter + 2*c} cm`;    // counting extra step twice
   const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
   if(!mcq) return makeCompoundPerimeterQuestion();
   return {
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Perimeter of compound shapes",
-    difficulty: "Core",
-    question: `A compound shape is made from two rectangles joined together.\nThe overall outline measures ${a} cm × ${b} cm.\nFind the perimeter of the compound shape.`,
+    difficulty: "Foundation / Core",
+    question: `An L-shaped compound shape has an outer width of ${A} cm and outer height of ${B} cm.\nA rectangle ${c} cm × ${d} cm has been cut from one corner.\nFind the perimeter of the compound shape.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
-    solution: `Perimeter = 2 × (${a} + ${b}) = 2 × ${a+b} = ${perimeter} cm`
+    solution: `When a corner is removed from a rectangle, the perimeter stays the same as the original bounding box.\nThe two new inner edges exactly replace the two outer edges removed.\nPerimeter = 2 × (${A} + ${B}) = 2 × ${A+B} = ${perimeter} cm`
   };
 }
 
@@ -1410,12 +1479,12 @@ function makeCircleCircumferenceQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Circumference of a circle",
-    difficulty: "Core",
-    question: `A circular pond has radius ${r} m.\nFind its circumference. Give your answer in terms of π.`,
-    diagram: svgCircle(`${r} m`, "full"),
+    difficulty: "Foundation / Core",
+    question: `A circle has radius ${r} cm.\nFind its circumference. Give your answer in terms of π.`,
+    diagram: svgCircle(`${r} cm`, "full"),
     options: mcq.options,
     correctIndex: mcq.correctIndex,
-    solution: `Circumference = 2πr = 2 × π × ${r} = ${2*r}π m`
+    solution: `Circumference = 2πr = 2 × π × ${r} = ${2*r}π cm`
   };
 }
 
@@ -1429,7 +1498,7 @@ function makeCircleAreaQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Area of a circle",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A circular pizza has radius ${r} cm.\nFind its area. Give your answer in terms of π.`,
     diagram: svgCircle(`${r} cm`, "full"),
     options: mcq.options,
@@ -1458,7 +1527,7 @@ function makeArcSectorQuestion(){
       id: makeID("GEO"),
       topic: "Geometry & Measure",
       skill: "Arc length",
-      difficulty: "Core",
+      difficulty: "Foundation / Core",
       question: `A circle has radius ${r} cm.\nFind the arc length of a ${fraction.label} of the circle.\nGive your answer in terms of π.`,
       diagram: svgCircle(`${r} cm`, fraction.den===4?"quarter":fraction.den===2?"half":"third"),
       options: mcq.options,
@@ -1477,7 +1546,7 @@ function makeArcSectorQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Area of a sector",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A circle has radius ${r} cm.\nFind the area of a ${fraction.label} of the circle.\nGive your answer in terms of π.`,
     diagram: svgCircle(`${r} cm`, fraction.den===4?"quarter":fraction.den===2?"half":"third"),
     options: mcq.options,
@@ -1553,7 +1622,7 @@ function makePrismVolumeQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Volume of a prism",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A prism has a cross-sectional area of ${area} cm² and length ${length} cm.\nFind its volume.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1585,15 +1654,16 @@ function makeAnglesAroundPointQuestion(){
   const b = choice([45,55,65,75,85,95]);
   if(a + b >= 360) return makeAnglesAroundPointQuestion();
   const c = 360 - a - b;
+  if(c > 180) return makeAnglesAroundPointQuestion();  // avoid reflex answers without a diagram
   const mcq = buildMCQOptions(`${c}°`,
-    [`${180 - a}°`, `${360 - a}°`, `${a + b}°`]);
+    [`${180 - a}°`, `${a + b}°`, `${c + 10}°`]);
   if(!mcq) return makeAnglesAroundPointQuestion();
   return {
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Angles around a point",
     difficulty: "Foundation / Core",
-    question: `Three angles are at a point: ${a}°, ${b}° and x°.\nFind x.`,
+    question: `Three angles meet at a point: ${a}°, ${b}° and x°.\nFind x.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
     solution: `Angles around a point add to 360°.\nx = 360° − ${a}° − ${b}° = ${c}°`
@@ -1634,7 +1704,7 @@ function makeQuadrilateralAngleQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Angles in a quadrilateral",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A quadrilateral has angles ${a}°, ${b}°, ${c}° and x°.\nFind x.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1652,7 +1722,7 @@ function makePolygonInteriorAngleQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Interior angle sum of a polygon",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `Find the sum of the interior angles of a regular ${sides}-sided polygon.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1674,7 +1744,7 @@ function makePythagorasQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Pythagoras — hypotenuse",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A right-angled triangle has shorter sides ${a} cm and ${b} cm.\nFind the hypotenuse.`,
     diagram: svgRightTriangle(a, b, c, {a:`${a} cm`, b:`${b} cm`, c:"?"}, "c"),
     options: mcq.options,
@@ -1700,7 +1770,7 @@ function makePythagorasMissingLegQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Pythagoras — missing shorter side",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A right-angled triangle has hypotenuse ${c} cm and one shorter side ${known} cm.\nFind the other shorter side.`,
     diagram: svgRightTriangle(askA ? known : correct, askA ? correct : known, c,
       {a: askA ? `${known} cm` : "?", b: askA ? "?" : `${known} cm`, c:`${c} cm`},
@@ -1722,7 +1792,7 @@ function makeTrigSOHQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Trigonometry — sine ratio",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `In a right-angled triangle, an angle θ has opposite side ${t[0]} cm and hypotenuse ${t[2]} cm.\nWhat is sin θ?`,
     diagram: svgRightTriangle(t[1], t[0], t[2], {a:`${t[1]} cm`, b:`${t[0]} cm (opp)`, c:`${t[2]} cm (hyp)`, theta:true}, null),
     options: mcq.options,
@@ -1742,7 +1812,7 @@ function makeScaleFactorLengthQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Enlargement — scale factor",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A shape is enlarged by scale factor ${sf}.\nA side of the original is ${original} cm.\nFind the corresponding side on the enlarged shape.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1761,7 +1831,7 @@ function makeScaleFactorAreaQuestion(){
     id: makeID("GEO"),
     topic: "Geometry & Measure",
     skill: "Enlargement — area scale factor",
-    difficulty: "Stretch",
+    difficulty: "Foundation / Core",
     question: `A shape is enlarged by scale factor ${sf}.\nThe original area is ${original} cm².\nFind the area of the enlarged shape.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1867,7 +1937,7 @@ function makeFrequencyMeanQuestion(){
     id: makeID("STAT"),
     topic: "Statistics & Probability",
     skill: "Mean from a frequency table",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `A frequency table shows:\nValue ${values[0]} has frequency ${freqs[0]}.\nValue ${values[1]} has frequency ${freqs[1]}.\nValue ${values[2]} has frequency ${freqs[2]}.\nFind the mean.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -1939,7 +2009,7 @@ function makeFrequencyTree(){
     id: makeID("STAT"),
     topic: "Statistics & Probability",
     skill: "Frequency trees",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${total} students were asked if they study maths and science.\n${group1} study maths. Of these, ${sub1a} also study science.\n${group2} do not study maths. Of these, ${sub2a} study science.\n\n${questionText}`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2054,7 +2124,7 @@ function makeExpectedFrequency(){
     id: makeID("PROB"),
     topic: "Statistics & Probability",
     skill: "Expected frequency",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `The probability that a spinner lands on blue is ${prob}.\nThe spinner is spun ${total} times.\nHow many times would you expect it to land on blue?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2077,7 +2147,7 @@ function makeRelativeFrequency(){
     id: makeID("STAT"),
     topic: "Statistics & Probability",
     skill: "Relative frequency",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `In ${trials} trials, an event occurs ${successes} times.\nFind the relative frequency.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2097,7 +2167,7 @@ function makePieChartAngle(){
     id: makeID("STAT"),
     topic: "Statistics & Probability",
     skill: "Pie chart angles",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `${total} students were surveyed about their favourite sport.\n${group} chose swimming.\nWhat angle should represent swimming in a pie chart?`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2142,7 +2212,7 @@ function makeIndependentProbability(){
     id: makeID("PROB"),
     topic: "Statistics & Probability",
     skill: "Independent events",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `Event A has probability ${p1.toFractionString()}.\nEvent B has probability ${p2.toFractionString()}.\nA and B are independent.\nFind the probability that both events occur.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2166,7 +2236,7 @@ function makeMutuallyExclusiveProbability(){
     id: makeID("PROB"),
     topic: "Statistics & Probability",
     skill: "Mutually exclusive events",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `P(A) = ${p1.toFractionString()} and P(B) = ${p2.toFractionString()}.\nA and B are mutually exclusive.\nFind P(A or B).`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2206,7 +2276,7 @@ function makeCombinedStatsConditionsQuestion(){
     id: makeID("STAT"),
     topic: "Statistics & Probability",
     skill: "Combined statistics conditions",
-    difficulty: "Core",
+    difficulty: "Foundation / Core",
     question: `Write down ${item.count} numbers satisfying all conditions:\nAll ${item.rangeText}.\n${item.conditions.join(".\n")}.`,
     options: mcq.options,
     correctIndex: mcq.correctIndex,
@@ -2358,12 +2428,517 @@ function svgAnglesOnLine(ang1, ang2Label){
   return svg;
 }
 
+
+/* =========================
+   AQA FOUNDATION ADDITIONS
+   ========================= */
+
+function makeBIDMAS(){
+  const type = choice(["mul_add","mul_sub","bracket_add","bracket_mul","indices"]);
+  if(type === "mul_add"){
+    const b = randInt(2,9), c = randInt(2,9), a = randInt(1,9);
+    const correct = a + b * c;
+    const mcq = buildMCQOptions(String(correct),
+      [String((a+b)*c), String(a+b+c), String(a*b+c)]);
+    if(!mcq) return makeBIDMAS();
+    return { id: makeID("BID"), topic: "Number", skill: "BIDMAS — order of operations",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${a} + ${b} × ${c}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Multiplication before addition.\n${b} × ${c} = ${b*c}, then ${a} + ${b*c} = ${correct}` };
+  }
+  if(type === "mul_sub"){
+    const b = randInt(2,9), c = randInt(2,9), a = randInt(b*c+1,b*c+15);
+    const correct = a - b * c;
+    if(correct <= 0) return makeBIDMAS();
+    const mcq = buildMCQOptions(String(correct),
+      [String((a-b)*c), String(a-b-c), String(a-b+c)]);
+    if(!mcq) return makeBIDMAS();
+    return { id: makeID("BID"), topic: "Number", skill: "BIDMAS — order of operations",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${a} − ${b} × ${c}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Multiplication before subtraction.\n${b} × ${c} = ${b*c}, then ${a} − ${b*c} = ${correct}` };
+  }
+  if(type === "bracket_add"){
+    const a = randInt(1,7), b = randInt(1,7), c = randInt(2,8);
+    const correct = (a+b)*c;
+    const mcq = buildMCQOptions(String(correct),
+      [String(a+b*c), String(a*c+b), String(a+b+c)]);
+    if(!mcq) return makeBIDMAS();
+    return { id: makeID("BID"), topic: "Number", skill: "BIDMAS — order of operations",
+      difficulty: "Foundation / Core",
+      question: `Work out: (${a} + ${b}) × ${c}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Brackets first: ${a} + ${b} = ${a+b}\nThen multiply: ${a+b} × ${c} = ${correct}` };
+  }
+  if(type === "bracket_mul"){
+    const a = randInt(3,9), b = randInt(1,a-1), c = randInt(2,7);
+    const correct = (a-b)*c;
+    const mcq = buildMCQOptions(String(correct),
+      [String(a-b*c), String(a*c-b), String((a+b)*c)]);
+    if(!mcq) return makeBIDMAS();
+    return { id: makeID("BID"), topic: "Number", skill: "BIDMAS — order of operations",
+      difficulty: "Foundation / Core",
+      question: `Work out: (${a} − ${b}) × ${c}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Brackets first: ${a} − ${b} = ${a-b}\nThen multiply: ${a-b} × ${c} = ${correct}` };
+  }
+  // indices
+  const b2 = randInt(2,7), a2 = randInt(1,9);
+  const correct2 = a2 + b2*b2;
+  const mcq2 = buildMCQOptions(String(correct2),
+    [String((a2+b2)*(a2+b2)), String(a2+b2*2), String(a2*b2*b2)]);
+  if(!mcq2) return makeBIDMAS();
+  return { id: makeID("BID"), topic: "Number", skill: "BIDMAS — order of operations",
+    difficulty: "Foundation / Core",
+    question: `Work out: ${a2} + ${b2}²`,
+    options: mcq2.options, correctIndex: mcq2.correctIndex,
+    solution: `Indices before addition: ${b2}² = ${b2*b2}\nThen: ${a2} + ${b2*b2} = ${correct2}` };
+}
+
+function makeRounding(){
+  const type = choice(["nearest_10","nearest_100","1dp","2dp","1sf","2sf"]);
+  if(type === "nearest_10"){
+    const n = randInt(10,200)*1 + randInt(1,9);
+    const r = Math.round(n/10)*10;
+    const mcq = buildMCQOptions(String(r), [String(r-10), String(r+10), String(Math.floor(n/10)*10)]);
+    if(!mcq) return makeRounding();
+    return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+      difficulty: "Foundation / Core",
+      question: `Round ${n} to the nearest 10.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The digit in the units column is ${n%10}. Since ${n%10 >= 5 ? n%10 + " ≥ 5" : n%10 + " < 5"}, round ${n%10 >= 5 ? "up" : "down"}.\n${n} rounded to nearest 10 = ${r}` };
+  }
+  if(type === "nearest_100"){
+    const n = randInt(1,10)*100 + randInt(1,99);
+    const r = Math.round(n/100)*100;
+    const mcq = buildMCQOptions(String(r), [String(r-100), String(r+100), String(Math.floor(n/100)*100)]);
+    if(!mcq) return makeRounding();
+    return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+      difficulty: "Foundation / Core",
+      question: `Round ${n} to the nearest 100.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The tens digit is ${Math.floor((n%100)/10)}. Since it is ${Math.floor((n%100)/10) >= 5 ? "≥ 5" : "< 5"}, round ${Math.floor((n%100)/10) >= 5 ? "up" : "down"}.\n${n} rounded to nearest 100 = ${r}` };
+  }
+  if(type === "1dp"){
+    const n = (randInt(10,99)/10 + randInt(0,9)/100);
+    const nStr = n.toFixed(2);
+    const r = parseFloat(n.toFixed(1));
+    const rStr = r.toFixed(1);
+    const mcq = buildMCQOptions(rStr, [(r+0.1).toFixed(1),(r-0.1).toFixed(1),n.toFixed(2)]);
+    if(!mcq) return makeRounding();
+    return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+      difficulty: "Foundation / Core",
+      question: `Round ${nStr} to 1 decimal place.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Look at the 2nd decimal place: ${parseInt(nStr.split(".")[1][1])}. Since it is ${parseInt(nStr.split(".")[1][1]) >= 5 ? "≥ 5, round up" : "< 5, round down"}.\nAnswer: ${rStr}` };
+  }
+  if(type === "2dp"){
+    // Build a number with exactly 3 d.p. where the 3rd digit is non-zero
+    const intPart = randInt(1, 9);
+    const d1 = randInt(0, 9), d2 = randInt(0, 9), d3 = choice([1,2,3,4,5,6,7,8,9]);
+    const nStr = `${intPart}.${d1}${d2}${d3}`;
+    const n = parseFloat(nStr);
+    const r = parseFloat(n.toFixed(2));
+    const rStr = r.toFixed(2);
+    const roundDir = d3 >= 5 ? "up" : "down";
+    const mcq = buildMCQOptions(rStr, [(r+0.01).toFixed(2),(r-0.01).toFixed(2),nStr]);
+    if(!mcq) return makeRounding();
+    return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+      difficulty: "Foundation / Core",
+      question: `Round ${nStr} to 2 decimal places.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Look at the 3rd decimal place: ${d3}.\nSince ${d3} ${d3 >= 5 ? "≥ 5" : "< 5"}, round ${roundDir}.\nAnswer: ${rStr}` };
+  }
+  if(type === "1sf"){
+    const n = randInt(10,99)*randInt(10,99);
+    const mag = Math.pow(10, Math.floor(Math.log10(n)));
+    const r = Math.round(n/mag)*mag;
+    const mcq = buildMCQOptions(String(r), [String(r+mag), String(r-mag), String(Math.floor(n/mag)*mag)]);
+    if(!mcq) return makeRounding();
+    return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+      difficulty: "Foundation / Core",
+      question: `Round ${n} to 1 significant figure.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The first significant figure is ${Math.floor(n/mag)}. The next digit is ${Math.floor((n%mag)/(mag/10))}. Round ${Math.floor((n%mag)/(mag/10)) >= 5 ? "up" : "down"}.\nAnswer: ${r}` };
+  }
+  // 2sf
+  const n2 = randInt(100,9999);
+  const mag2 = Math.pow(10, Math.floor(Math.log10(n2))-1);
+  const r2 = Math.round(n2/mag2)*mag2;
+  const mcq3 = buildMCQOptions(String(r2), [String(r2+mag2), String(r2-mag2), String(n2)]);
+  if(!mcq3) return makeRounding();
+  return { id: makeID("RND"), topic: "Number", skill: "Rounding",
+    difficulty: "Foundation / Core",
+    question: `Round ${n2} to 2 significant figures.`,
+    options: mcq3.options, correctIndex: mcq3.correctIndex,
+    solution: `The first two significant figures give ${Math.floor(n2/mag2)}. The next digit determines rounding.\nAnswer: ${r2}` };
+}
+
+function makeNegativeNumbers(){
+  const type = choice(["add","subtract","multiply","divide","order"]);
+  const a = randInt(-10,-1), b = randInt(-10,-1);
+  const pa = randInt(2,12), nb = randInt(-10,-2);
+  if(type === "add"){
+    const ans = a + b;
+    const mcq = buildMCQOptions(String(ans), [String(a-b), String(Math.abs(a)+Math.abs(b)), String(ans-1)]);
+    if(!mcq) return makeNegativeNumbers();
+    return { id: makeID("NEG"), topic: "Number", skill: "Negative numbers",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${a} + ${b}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Adding two negative numbers: the result is negative.\n${a} + ${b} = ${ans}` };
+  }
+  if(type === "subtract"){
+    const ans = pa + Math.abs(nb);  // pa - nb = pa + |nb| since nb is negative
+    const mcq = buildMCQOptions(String(ans), [String(pa+nb), String(pa-Math.abs(nb)), String(ans-1)]);
+    if(!mcq) return makeNegativeNumbers();
+    return { id: makeID("NEG"), topic: "Number", skill: "Negative numbers",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${pa} − (${nb})`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Subtracting a negative is the same as adding: ${pa} − (${nb}) = ${pa} + ${Math.abs(nb)} = ${ans}` };
+  }
+  if(type === "multiply"){
+    const x = choice([-6,-5,-4,-3,-2,2,3,4,5,6]);
+    const y = choice([-6,-5,-4,-3,-2,2,3,4,5,6]);
+    const ans = x * y;
+    const mcq = buildMCQOptions(String(ans), [String(-ans), String(x+y), String(Math.abs(x*y)+1)]);
+    if(!mcq) return makeNegativeNumbers();
+    return { id: makeID("NEG"), topic: "Number", skill: "Negative numbers",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${x} × ${y}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `${x < 0 && y < 0 ? "Negative × negative = positive." : x < 0 || y < 0 ? "Positive × negative = negative." : "Positive × positive = positive."}\n${x} × ${y} = ${ans}` };
+  }
+  if(type === "divide"){
+    const divisor = choice([-5,-4,-3,-2,2,3,4,5]);
+    const quotient = choice([-8,-6,-5,-4,-3,-2,2,3,4,5,6,8]);
+    const dividend = divisor * quotient;
+    const ans = quotient;
+    const mcq = buildMCQOptions(String(ans), [String(-ans), String(dividend+divisor), String(ans+1)]);
+    if(!mcq) return makeNegativeNumbers();
+    return { id: makeID("NEG"), topic: "Number", skill: "Negative numbers",
+      difficulty: "Foundation / Core",
+      question: `Work out: ${dividend} ÷ ${divisor}`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `${dividend < 0 && divisor < 0 ? "Negative ÷ negative = positive." : dividend < 0 || divisor < 0 ? "Signs differ, so result is negative." : "Both positive, result is positive."}\n${dividend} ÷ ${divisor} = ${ans}` };
+  }
+  // order
+  const nums = [choice([-8,-6,-4,-2]), choice([-7,-5,-3,-1]), choice([1,2,3,4]), choice([5,6,7,8])];
+  const sorted = nums.slice().sort((x,y)=>x-y);
+  const correctText = sorted.join(", ");
+  const wrong1 = nums.join(", ");
+  const wrong2 = nums.slice().reverse().join(", ");
+  const wrong3 = sorted.slice().reverse().join(", ");
+  const mcq2 = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
+  if(!mcq2) return makeNegativeNumbers();
+  return { id: makeID("NEG"), topic: "Number", skill: "Negative numbers",
+    difficulty: "Foundation",
+    question: `Write these numbers in order from smallest to largest:\n${nums.join(", ")}`,
+    options: mcq2.options, correctIndex: mcq2.correctIndex,
+    solution: `On a number line, numbers increase from left to right.\nSmallest first: ${correctText}` };
+}
+
+function makeHCFLCM(){
+  const type = choice(["hcf","lcm"]);
+  const numPairs = [
+    [12,18],[12,16],[15,20],[8,12],[6,9],[10,15],[14,21],[16,24],[20,30],[9,12],
+    [6,14],[8,20],[12,30],[15,25],[18,27],[4,10],[6,10],[12,20],[15,35],[8,24]
+  ];
+  const [a,b] = choice(numPairs);
+  const g = gcd(a,b);
+  const l = (a*b)/g;
+  if(type === "hcf"){
+    const mcq = buildMCQOptions(String(g), [String(l), String(g+1), String(a*b)]);
+    if(!mcq) return makeHCFLCM();
+    return { id: makeID("HCF"), topic: "Number", skill: "HCF and LCM",
+      difficulty: "Foundation / Core",
+      question: `Find the highest common factor (HCF) of ${a} and ${b}.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `List factors of ${a}: ${Array.from({length:a},(_,i)=>i+1).filter(x=>a%x===0).join(", ")}\nList factors of ${b}: ${Array.from({length:b},(_,i)=>i+1).filter(x=>b%x===0).join(", ")}\nHighest common factor = ${g}` };
+  }
+  const mcq = buildMCQOptions(String(l), [String(g), String(a*b), String(l+a)]);
+  if(!mcq) return makeHCFLCM();
+  return { id: makeID("LCM"), topic: "Number", skill: "HCF and LCM",
+    difficulty: "Foundation / Core",
+    question: `Find the lowest common multiple (LCM) of ${a} and ${b}.`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `LCM = (${a} × ${b}) ÷ HCF = (${a} × ${b}) ÷ ${g} = ${a*b} ÷ ${g} = ${l}` };
+}
+
+function makeFractionAddSub(){
+  const op = choice(["+","−"]);
+  const d1 = choice([4,5,6,8,10,12]), d2 = choice([3,4,6,8,9,10]);
+  const n1 = randInt(1,d1-1), n2 = randInt(1,d2-1);
+  const lcd = (d1*d2)/gcd(d1,d2);
+  const numResult = op === "+" ? n1*(lcd/d1) + n2*(lcd/d2) : n1*(lcd/d1) - n2*(lcd/d2);
+  if(numResult <= 0) return makeFractionAddSub();
+  const g2 = gcd(Math.abs(numResult), lcd);
+  const rn = numResult/g2, rd = lcd/g2;
+  const whole = rd === 1 ? rn : Math.floor(rn/rd);
+  const rem = rd === 1 ? 0 : rn % rd;
+  const correctText = rd === 1 ? String(rn) : (whole > 0 ? `${whole} ${rem}/${rd}` : `${rn}/${rd}`);
+  const wrong1 = `${n1+n2*(op==="+"?1:-1)}/${Math.max(d1,d2)}`;
+  const wrong2 = `${n1*(op==="+"?1:1)+n2}/${d1*d2}`;
+  const wrong3 = rd === 1 ? String(rn+1) : `${rn+1}/${rd}`;
+  const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
+  if(!mcq) return makeFractionAddSub();
+  return { id: makeID("FRAC"), topic: "Number", skill: "Adding and subtracting fractions",
+    difficulty: "Foundation / Core",
+    question: `Work out: ${n1}/${d1} ${op} ${n2}/${d2}\nGive your answer in its simplest form.`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Common denominator = ${lcd}\n${n1}/${d1} = ${n1*(lcd/d1)}/${lcd}\n${n2}/${d2} = ${n2*(lcd/d2)}/${lcd}\nResult = ${numResult}/${lcd} = ${correctText}` };
+}
+
+function makeFractionMultiplyDivide(){
+  const op = choice(["×","÷"]);
+  const n1 = randInt(1,5), d1 = randInt(2,8), n2 = randInt(1,5), d2 = randInt(2,8);
+  if(d1 === d2 && n1 === n2) return makeFractionMultiplyDivide();
+  if(n1 === d1 || n2 === d2) return makeFractionMultiplyDivide(); // prevent n/n = 1 fractions
+  let rn, rd;
+  if(op === "×"){
+    rn = n1*n2; rd = d1*d2;
+  } else {
+    rn = n1*d2; rd = d1*n2;
+  }
+  if(rd === 0) return makeFractionMultiplyDivide();
+  const g2 = gcd(rn,rd);
+  const crn = rn/g2, crd = rd/g2;
+  const whole = Math.floor(crn/crd), rem = crn%crd;
+  const correctText = crd === 1 ? String(crn) : (whole > 0 ? `${whole} ${rem}/${crd}` : `${crn}/${crd}`);
+  const wrong1 = op === "×" ? `${n1+n2}/${d1+d2}` : `${n1*n2}/${d1*d2}`;
+  const wrong2 = `${rn+1}/${rd}`;
+  const wrong3 = crd === 1 ? String(crn+1) : `${crn+1}/${crd}`;
+  const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
+  if(!mcq) return makeFractionMultiplyDivide();
+  const q = op === "×" ? `${n1}/${d1} × ${n2}/${d2}` : `${n1}/${d1} ÷ ${n2}/${d2}`;
+  const sol = op === "×"
+    ? `Multiply numerators: ${n1} × ${n2} = ${n1*n2}\nMultiply denominators: ${d1} × ${d2} = ${d1*d2}\nSimplify: ${rn}/${rd} = ${correctText}`
+    : `Flip the second fraction and multiply:\n${n1}/${d1} × ${d2}/${n2} = ${n1*d2}/${d1*n2} = ${correctText}`;
+  return { id: makeID("FRAC"), topic: "Number", skill: "Multiplying and dividing fractions",
+    difficulty: "Foundation / Core",
+    question: `Work out: ${q}\nGive your answer in its simplest form.`,
+    options: mcq.options, correctIndex: mcq.correctIndex, solution: sol };
+}
+
+function makeFDPConversion(){
+  const conversions = [
+    {from:"fraction", to:"decimal",   f:"1/2",  d:"0.5",   p:"50%",  sol:"1 ÷ 2 = 0.5"},
+    {from:"fraction", to:"decimal",   f:"1/4",  d:"0.25",  p:"25%",  sol:"1 ÷ 4 = 0.25"},
+    {from:"fraction", to:"decimal",   f:"3/4",  d:"0.75",  p:"75%",  sol:"3 ÷ 4 = 0.75"},
+    {from:"fraction", to:"decimal",   f:"1/5",  d:"0.2",   p:"20%",  sol:"1 ÷ 5 = 0.2"},
+    {from:"fraction", to:"decimal",   f:"2/5",  d:"0.4",   p:"40%",  sol:"2 ÷ 5 = 0.4"},
+    {from:"fraction", to:"decimal",   f:"3/5",  d:"0.6",   p:"60%",  sol:"3 ÷ 5 = 0.6"},
+    {from:"decimal",  to:"fraction",  f:"3/10", d:"0.3",   p:"30%",  sol:"0.3 = 30/100 = 3/10"},
+    {from:"decimal",  to:"percentage",f:"7/10", d:"0.7",   p:"70%",  sol:"0.7 × 100 = 70%"},
+    {from:"percentage","to":"fraction",f:"1/8", d:"0.125", p:"12.5%",sol:"12.5% ÷ 100 = 0.125 = 1/8"},
+    {from:"fraction", to:"percentage",f:"1/3",  d:"0.333...",p:"33.3%",sol:"1 ÷ 3 = 0.333... × 100 ≈ 33.3%"},
+  ];
+  const item = choice(conversions);
+  const type = choice(["f_to_d","f_to_p","d_to_p","d_to_f","p_to_d"]);
+  let question, correctText, wrongs, sol;
+  if(type === "f_to_d"){
+    question = `Convert ${item.f} to a decimal.`;
+    correctText = item.d; wrongs = [(parseFloat(item.d)+0.1).toFixed(2), item.p, String(parseInt(item.f))]; sol = item.sol;
+  } else if(type === "f_to_p"){
+    question = `Convert ${item.f} to a percentage.`;
+    correctText = item.p; wrongs = [item.d, (parseFloat(item.p)+10)+"%", (parseFloat(item.p)-10)+"%"]; sol = `${item.f} → decimal: ${item.d} → × 100 = ${item.p}`;
+  } else if(type === "d_to_p"){
+    question = `Convert ${item.d} to a percentage.`;
+    correctText = item.p; wrongs = [item.f, (parseFloat(item.p)+5)+"%", item.d+"%"]; sol = `${item.d} × 100 = ${item.p}`;
+  } else if(type === "d_to_f"){
+    question = `Write ${item.d} as a fraction in its simplest form.`;
+    correctText = item.f; wrongs = [item.d+"/1", "1/"+item.d, item.p]; sol = `${item.d} = ${item.f}`;
+  } else {
+    question = `Convert ${item.p} to a decimal.`;
+    correctText = item.d; wrongs = [item.f, (parseFloat(item.d)+0.1).toFixed(2), item.p.replace("%","")]; sol = `${item.p} ÷ 100 = ${item.d}`;
+  }
+  const mcq = buildMCQOptions(correctText, wrongs);
+  if(!mcq) return makeFDPConversion();
+  return { id: makeID("FDP"), topic: "Number", skill: "FDP conversions",
+    difficulty: "Foundation / Core",
+    question, options: mcq.options, correctIndex: mcq.correctIndex, solution: sol };
+}
+
+function makeFactoriseCommonFactor(){
+  const k = randInt(2,8);
+  const a = randInt(2,9), b = randInt(2,9);
+  const term1 = k*a, term2 = k*b;
+  const op = choice(["+","−"]);
+  const correctText = op === "+" ? `${k}(${a}n + ${b})` : `${k}(${a}n − ${b})`;
+  const wrong1 = `${a}n + ${term2}`;
+  const wrong2 = `${k}(${a}n ${op === "+" ? "−" : "+"} ${b})`;
+  const wrong3 = `${k}n(${a} ${op} ${b})`;
+  const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
+  if(!mcq) return makeFactoriseCommonFactor();
+  return { id: makeID("ALG"), topic: "Algebra", skill: "Factorising (common factor)",
+    difficulty: "Foundation / Core",
+    question: `Factorise fully: ${term1}n ${op} ${term2}`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `HCF of ${term1} and ${term2} is ${k}.\n${term1}n ${op} ${term2} = ${correctText}` };
+}
+
+function makeParallelLinesAngles(){
+  const angle = choice([35,40,45,50,55,60,65,70,75,80]);
+  const type = choice(["alternate","corresponding","co-interior"]);
+  let question, correctText, explanation, wrong1, wrong2, wrong3;
+  if(type === "alternate"){
+    correctText = `${angle}°`;
+    wrong1 = `${180-angle}°`; wrong2 = `${90-angle}°`; wrong3 = `${angle+10}°`;
+    question = `Two parallel lines are cut by a transversal.\nOne angle is ${angle}°.\nFind the alternate angle x.`;
+    explanation = `Alternate angles are equal (Z-angles).\nx = ${angle}°`;
+  } else if(type === "corresponding"){
+    correctText = `${angle}°`;
+    wrong1 = `${180-angle}°`; wrong2 = `${360-angle}°`; wrong3 = `${angle+10}°`;
+    question = `Two parallel lines are cut by a transversal.\nOne angle is ${angle}°.\nFind the corresponding angle x.`;
+    explanation = `Corresponding angles are equal (F-angles).\nx = ${angle}°`;
+  } else {
+    const coInt = 180 - angle;
+    correctText = `${coInt}°`;
+    wrong1 = `${angle}°`; wrong2 = `${360-coInt}°`; wrong3 = `${coInt+10}°`;
+    question = `Two parallel lines are cut by a transversal.\nOne angle is ${angle}°.\nFind the co-interior angle x.`;
+    explanation = `Co-interior angles add up to 180° (C-angles).\nx = 180° − ${angle}° = ${coInt}°`;
+  }
+  const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
+  if(!mcq) return makeParallelLinesAngles();
+  return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Angles in parallel lines",
+    difficulty: "Foundation / Core",
+    question, options: mcq.options, correctIndex: mcq.correctIndex, solution: explanation };
+}
+
+function makeParallelogramArea(){
+  const base = choice([6,7,8,9,10,12,14,15]);
+  const height = choice([4,5,6,7,8,9,10]);
+  const area = base * height;
+  const mcq = buildMCQOptions(`${area} cm²`,
+    [`${2*(base+height)} cm²`, `${Math.round(base*height/2)} cm²`, `${area+base} cm²`]);
+  if(!mcq) return makeParallelogramArea();
+  return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Area of a parallelogram",
+    difficulty: "Foundation / Core",
+    question: `A parallelogram has base ${base} cm and perpendicular height ${height} cm.\nFind its area.`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Area = base × perpendicular height = ${base} × ${height} = ${area} cm²` };
+}
+
+function makeTrapeziumArea(){
+  const a = choice([4,5,6,7,8,9,10]);
+  const b = choice([10,11,12,13,14,15,16,18]);
+  const h = choice([4,5,6,7,8,10]);
+  if((a+b)*h % 2 !== 0) return makeTrapeziumArea();
+  const area = (a+b)*h/2;
+  const mcq = buildMCQOptions(`${area} cm²`,
+    [`${(a+b)*h} cm²`, `${a*h+b} cm²`, `${area+h} cm²`]);
+  if(!mcq) return makeTrapeziumArea();
+  return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Area of a trapezium",
+    difficulty: "Foundation / Core",
+    question: `A trapezium has parallel sides ${a} cm and ${b} cm, and height ${h} cm.\nFind its area.`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Area = ½ × (a + b) × h = ½ × (${a} + ${b}) × ${h} = ½ × ${a+b} × ${h} = ${area} cm²` };
+}
+
+function makeTransformations(){
+  const type = choice(["reflection_x","reflection_y","rotation_90","rotation_180","translation"]);
+  const px = randInt(-4,4), py = randInt(-4,4);
+  if(px === 0 && py === 0) return makeTransformations();
+  if(type === "reflection_x"){
+    const ans = `(${px}, ${-py})`;
+    const mcq = buildMCQOptions(ans, [`(${-px}, ${py})`, `(${-px}, ${-py})`, `(${py}, ${px})`]);
+    if(!mcq) return makeTransformations();
+    return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Transformations — reflection",
+      difficulty: "Foundation / Core",
+      question: `Point P has coordinates (${px}, ${py}).\nP is reflected in the x-axis.\nWrite down the coordinates of the image P'.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Reflection in the x-axis: (x, y) → (x, −y).\nP(${px}, ${py}) → P'(${px}, ${-py})` };
+  }
+  if(type === "reflection_y"){
+    const ans = `(${-px}, ${py})`;
+    const mcq = buildMCQOptions(ans, [`(${px}, ${-py})`, `(${-px}, ${-py})`, `(${py}, ${px})`]);
+    if(!mcq) return makeTransformations();
+    return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Transformations — reflection",
+      difficulty: "Foundation / Core",
+      question: `Point P has coordinates (${px}, ${py}).\nP is reflected in the y-axis.\nWrite down the coordinates of the image P'.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `Reflection in the y-axis: (x, y) → (−x, y).\nP(${px}, ${py}) → P'(${-px}, ${py})` };
+  }
+  if(type === "rotation_90"){
+    const ans = `(${-py}, ${px})`;
+    const mcq = buildMCQOptions(ans, [`(${py}, ${-px})`, `(${-px}, ${-py})`, `(${py}, ${px})`]);
+    if(!mcq) return makeTransformations();
+    return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Transformations — rotation",
+      difficulty: "Foundation / Core",
+      question: `Point P has coordinates (${px}, ${py}).\nP is rotated 90° anticlockwise about the origin.\nWrite down the coordinates of P'.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `90° anticlockwise: (x, y) → (−y, x).\nP(${px}, ${py}) → P'(${-py}, ${px})` };
+  }
+  if(type === "rotation_180"){
+    const ans = `(${-px}, ${-py})`;
+    const mcq = buildMCQOptions(ans, [`(${px}, ${-py})`, `(${-px}, ${py})`, `(${py}, ${px})`]);
+    if(!mcq) return makeTransformations();
+    return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Transformations — rotation",
+      difficulty: "Foundation / Core",
+      question: `Point P has coordinates (${px}, ${py}).\nP is rotated 180° about the origin.\nWrite down the coordinates of P'.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `180° rotation: (x, y) → (−x, −y).\nP(${px}, ${py}) → P'(${-px}, ${-py})` };
+  }
+  // translation
+  const tx = randInt(-5,5), ty = randInt(-5,5);
+  if(tx === 0 && ty === 0) return makeTransformations();
+  const ans = `(${px+tx}, ${py+ty})`;
+  const mcq = buildMCQOptions(ans,
+    [`(${px-tx}, ${py-ty})`, `(${px+tx+1}, ${py+ty})`, `(${tx}, ${ty})`]);
+  if(!mcq) return makeTransformations();
+  return { id: makeID("GEO"), topic: "Geometry & Measure", skill: "Transformations — translation",
+    difficulty: "Foundation / Core",
+    question: `Point P has coordinates (${px}, ${py}).\nP is translated by the vector (${tx}, ${ty}).\nWrite down the coordinates of P'.`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Add the translation vector: (${px} + ${tx}, ${py} + ${ty}) = (${px+tx}, ${py+ty})` };
+}
+
+function makeTrigCosQuestion(){
+  const triples = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[6,8,10]];
+  const t = choice(triples);
+  const [opp, adj, hyp] = t;
+  const ans = `${adj}/${hyp}`;
+  const mcq = buildMCQOptions(ans,
+    [`${opp}/${hyp}`, `${opp}/${adj}`, `${hyp}/${adj}`]);
+  if(!mcq) return makeTrigCosQuestion();
+  return { id: makeID("TRIG"), topic: "Geometry & Measure", skill: "Trigonometry — cosine ratio",
+    difficulty: "Foundation / Core",
+    question: `In a right-angled triangle, angle θ has:\nAdjacent side = ${adj} cm, Hypotenuse = ${hyp} cm.\nWhat is cos θ?`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `cos θ = adjacent ÷ hypotenuse = ${adj}/${hyp}` };
+}
+
+function makeTrigTanQuestion(){
+  const triples = [[3,4,5],[5,12,13],[8,15,17],[7,24,25],[6,8,10]];
+  const t = choice(triples);
+  const [opp, adj, hyp] = t;
+  const ans = `${opp}/${adj}`;
+  const mcq = buildMCQOptions(ans,
+    [`${adj}/${opp}`, `${opp}/${hyp}`, `${adj}/${hyp}`]);
+  if(!mcq) return makeTrigTanQuestion();
+  return { id: makeID("TRIG"), topic: "Geometry & Measure", skill: "Trigonometry — tangent ratio",
+    difficulty: "Foundation / Core",
+    question: `In a right-angled triangle, angle θ has:\nOpposite side = ${opp} cm, Adjacent side = ${adj} cm.\nWhat is tan θ?`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `tan θ = opposite ÷ adjacent = ${opp}/${adj}` };
+}
+
 /* =========================
    TOPIC MAP
    ========================= */
 const TOPIC_MAP = {
   "Number": [
+    makeBIDMAS,
+    makeRounding,
+    makeNegativeNumbers,
+    makeHCFLCM,
     makeFractionOfAmount,
+    makeFractionAddSub,
+    makeFractionMultiplyDivide,
+    makeFDPConversion,
     makeRatioSimplify,
     makeRatioShare,
     makePercentChange,
@@ -2385,6 +2960,7 @@ const TOPIC_MAP = {
   "Algebra": [
     makeSimplifyExpressionQuestion,
     makeExpandSingleBracketQuestion,
+    makeFactoriseCommonFactor,
     makeEquationOneStepQuestion,
     makeEquationTwoStepQuestion,
     makeEquationFromWordsQuestion,
@@ -2403,6 +2979,8 @@ const TOPIC_MAP = {
     makeRectanglePerimeterQuestion,
     makeCompoundPerimeterQuestion,
     makeTriangleAreaQuestion,
+    makeParallelogramArea,
+    makeTrapeziumArea,
     makeCircleCircumferenceQuestion,
     makeCircleAreaQuestion,
     makeArcSectorQuestion,
@@ -2414,9 +2992,13 @@ const TOPIC_MAP = {
     makeTriangleAngleQuestion,
     makeQuadrilateralAngleQuestion,
     makePolygonInteriorAngleQuestion,
+    makeParallelLinesAngles,
     makePythagorasQuestion,
     makePythagorasMissingLegQuestion,
     makeTrigSOHQuestion,
+    makeTrigCosQuestion,
+    makeTrigTanQuestion,
+    makeTransformations,
     makeScaleFactorLengthQuestion,
     makeScaleFactorAreaQuestion
   ],
@@ -2508,6 +3090,9 @@ function generateQuestion(){
     return;
   }
 
+  optionSelected = false;
+  const feedbackEl2 = document.getElementById("feedback");
+  if(feedbackEl2) { feedbackEl2.style.display = "none"; feedbackEl2.textContent = ""; }
   const factory = pickFactoryEvenly(topicToUse);
   currentQuestion = factory();
 
@@ -2528,13 +3113,65 @@ function generateQuestion(){
   optionsListEl.innerHTML = "";
   const labels = ["A","B","C","D"];
   currentQuestion.options.forEach((opt, idx) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span class="option-label">${labels[idx]}.</span> ${opt}`;
-    optionsListEl.appendChild(li);
+    const btn = document.createElement("button");
+    btn.className = "opt-btn";
+    btn.innerHTML = `<span class="opt-label">${labels[idx]}</span><span class="opt-text">${opt}</span>`;
+    btn.addEventListener("click", () => selectOption(idx));
+    optionsListEl.appendChild(btn);
   });
   solutionTextEl.textContent = currentQuestion.solution;
   solutionBlockEl.style.display = "none";
   hideSolutionBtn.disabled = true;
+  showSolutionBtn.disabled = false;
+}
+
+/* =========================
+   MCQ SELECTION + SCORING
+   ========================= */
+let sessionCorrect = 0;
+let sessionWrong = 0;
+let optionSelected = false;
+
+function selectOption(selectedIdx) {
+  if(optionSelected) return;
+  optionSelected = true;
+
+  const btns = optionsListEl.querySelectorAll(".opt-btn");
+  const correctIdx = currentQuestion.correctIndex;
+
+  btns.forEach((btn, i) => {
+    btn.disabled = true;
+    if(i === correctIdx) {
+      btn.classList.add("opt-correct");
+    }
+  });
+
+  const feedbackEl = document.getElementById("feedback");
+  if(selectedIdx === correctIdx) {
+    btns[selectedIdx].classList.add("opt-chosen-correct");
+    sessionCorrect++;
+    feedbackEl.textContent = "✓ Correct!";
+    feedbackEl.className = "feedback feedback-correct";
+  } else {
+    btns[selectedIdx].classList.add("opt-chosen-wrong");
+    sessionCorrect; // no change
+    sessionWrong++;
+    feedbackEl.textContent = `✗ Incorrect — the correct answer was ${["A","B","C","D"][correctIdx]}.`;
+    feedbackEl.className = "feedback feedback-wrong";
+  }
+  feedbackEl.style.display = "block";
+  updateScoreBar();
+}
+
+function updateScoreBar() {
+  const total = sessionCorrect + sessionWrong;
+  const pct = total > 0 ? Math.round(sessionCorrect * 100 / total) : 0;
+  document.getElementById("scoreCorrect").textContent = sessionCorrect;
+  document.getElementById("scoreWrong").textContent = sessionWrong;
+  document.getElementById("scorePct").textContent = total > 0 ? pct + "%" : "—";
+  document.getElementById("scoreBar").style.display = "flex";
+  document.getElementById("scoreBarFill").style.width = pct + "%";
+  document.getElementById("scoreBarLabel").textContent = total + " answered";
 }
 
 /* =========================
