@@ -2763,14 +2763,18 @@ function makeFDPConversion(){
 }
 
 function makeFactoriseCommonFactor(){
-  const k = randInt(2,8);
-  const a = randInt(2,9), b = randInt(2,9);
+  // Pick k (the HCF), then coprime multipliers a and b so gcd(a,b)=1
+  // This guarantees the factorisation is FULLY factorised
+  const k = randInt(2,9);
+  const a = choice([2,3,4,5,7]);
+  const b = choice([2,3,5,7,9].filter(v => gcd(a,v) === 1 && v !== a));
+  if(!b) return makeFactoriseCommonFactor();
   const term1 = k*a, term2 = k*b;
   const op = choice(["+","−"]);
   const correctText = op === "+" ? `${k}(${a}n + ${b})` : `${k}(${a}n − ${b})`;
-  const wrong1 = `${a}n + ${term2}`;
-  const wrong2 = `${k}(${a}n ${op === "+" ? "−" : "+"} ${b})`;
-  const wrong3 = `${k}n(${a} ${op} ${b})`;
+  const wrong1 = `${a}n + ${term2}`;                          // forgot to factorise second term
+  const wrong2 = `${k}(${a}n ${op === "+" ? "−" : "+"} ${b})`; // wrong sign
+  const wrong3 = `${k}n(${a} ${op} ${b})`;                   // spurious n inside bracket
   const mcq = buildMCQOptions(correctText, [wrong1, wrong2, wrong3]);
   if(!mcq) return makeFactoriseCommonFactor();
   return { id: makeID("ALG"), topic: "Algebra", skill: "Factorising (common factor)",
