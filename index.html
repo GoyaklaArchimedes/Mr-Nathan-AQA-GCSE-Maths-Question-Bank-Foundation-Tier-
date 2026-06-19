@@ -2944,6 +2944,289 @@ function makeTrigTanQuestion(){
 /* =========================
    TOPIC MAP
    ========================= */
+
+/* =========================
+   NEW: Bearings, Venn, Loci (AQA Foundation QB)
+   ========================= */
+
+function drawBearingSVG(bearing, from, to){
+  const W=300, H=260;
+  const len=100;
+  const rad=(bearing-90)*Math.PI/180;
+  const dx=len*Math.cos(rad), dy=len*Math.sin(rad);
+  const margin=50;
+  let fx=W/2, fy=H/2;
+  if(dx>0 && fx+dx>W-margin) fx=W-margin-dx;
+  if(dx<0 && fx+dx<margin) fx=margin-dx;
+  if(dy>0 && fy+dy>H-margin) fy=H-margin-dy;
+  if(dy<0 && fy+dy<margin) fy=margin-dy;
+  const tx=fx+dx, ty=fy+dy;
+
+  const lineLen = Math.sqrt(dx*dx + dy*dy) || 1;
+  const ux = dx/lineLen, uy = dy/lineLen;
+  const px = -uy, py = ux;
+  const perpOffset = 18, alongOffset = 14;
+  const fromLabelX = fx - ux*alongOffset + px*perpOffset;
+  const fromLabelY = fy - uy*alongOffset + py*perpOffset;
+  const toLabelX   = tx + ux*alongOffset + px*perpOffset;
+  const toLabelY   = ty + uy*alongOffset + py*perpOffset;
+
+  return `<svg viewBox="0 0 ${W} ${H}" font-family="Arial,sans-serif">
+  <line x1="${fx}" y1="${fy}" x2="${tx}" y2="${ty}" stroke="#1a4a9e" stroke-width="2.5" marker-end="url(#ah)"/>
+  <line x1="${fx}" y1="${fy}" x2="${fx}" y2="${Math.max(10,fy-70)}" stroke="#aaa" stroke-width="1.2" stroke-dasharray="4,3"/>
+  <text x="${fx}" y="${Math.max(18,fy-75)}" text-anchor="middle" font-size="11" fill="#888">N</text>
+  <circle cx="${fx}" cy="${fy}" r="4" fill="#1a4a9e"/>
+  <circle cx="${tx}" cy="${ty}" r="4" fill="#c8102e"/>
+  <text x="${fromLabelX}" y="${fromLabelY}" text-anchor="middle" font-size="13" font-weight="700" fill="#1a4a9e">${from}</text>
+  <text x="${toLabelX}" y="${toLabelY}" text-anchor="middle" font-size="13" font-weight="700" fill="#c8102e">${to}</text>
+  <defs><marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+    <path d="M0,0 L0,6 L8,3 z" fill="#1a4a9e"/>
+  </marker></defs>
+</svg>`;
+}
+
+function venn2SVGAQA(leftLabel,rightLabel,leftOnly,both,rightOnly,neither){
+  return `
+<svg viewBox="0 0 420 260" role="img" aria-label="Two-set Venn diagram">
+  <rect x="20" y="30" width="380" height="200" rx="8" fill="#ffffff" stroke="#1e2a45" stroke-width="2"/>
+  <text x="42" y="54" text-anchor="middle" font-family="Georgia,serif" font-size="17" font-weight="700" fill="#1e2a45">ξ</text>
+  <circle cx="165" cy="130" r="78" fill="#dbeafe" fill-opacity="0.55" stroke="#1a4a9e" stroke-width="2"/>
+  <circle cx="255" cy="130" r="78" fill="#fef3c7" fill-opacity="0.65" stroke="#c9963a" stroke-width="2"/>
+  <text x="113" y="100" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#1a4a9e">${leftLabel}</text>
+  <text x="307" y="100" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#c9963a">${rightLabel}</text>
+  <text x="118" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#1e2a45">${leftOnly}</text>
+  <text x="210" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#4b3800">${both}</text>
+  <text x="302" y="135" text-anchor="middle" font-family="Arial,sans-serif" font-size="19" font-weight="700" fill="#1e2a45">${rightOnly}</text>
+  <text x="55" y="210" text-anchor="middle" font-family="Arial,sans-serif" font-size="14" fill="#888">${neither}</text>
+</svg>`;
+}
+
+function makeBearings(){
+  const from = choice(["A","B","C","D"]);
+  const to   = choice(["A","B","C","D"].filter(v=>v!==from));
+  const bearing = (randInt(1,35)*10) % 360 || 10;
+  const type = choice(["back","from_description"]);
+
+  if(type === "back"){
+    const back = (bearing+180) % 360;
+    const ansStr = String(back).padStart(3,"0")+"°";
+    const mcq = buildMCQOptions(ansStr, [
+      String((bearing+90)%360).padStart(3,"0")+"°",
+      String((bearing+270)%360).padStart(3,"0")+"°",
+      String(bearing).padStart(3,"0")+"°"
+    ]);
+    if(!mcq) return makeBearings();
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Bearings",
+      difficulty: "Foundation / Core",
+      question: `The bearing of ${to} from ${from} is ${String(bearing).padStart(3,"0")}°.\nWork out the bearing of ${from} from ${to}.`,
+      diagram: drawBearingSVG(bearing, from, to),
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `To find the return bearing, ${bearing<180?"add":"subtract"} 180°.\n${bearing}° ${bearing<180?"+":"−"} 180° = ${back}°\nAs a three-figure bearing: ${ansStr}`
+    };
+  }
+
+  const directions = [
+    {desc:"due North", bearing:0}, {desc:"due East", bearing:90},
+    {desc:"due South", bearing:180}, {desc:"due West", bearing:270},
+    {desc:"North-East", bearing:45}, {desc:"South-East", bearing:135},
+    {desc:"South-West", bearing:225}, {desc:"North-West", bearing:315},
+  ];
+  const dir = choice(directions);
+  const ansStr = String(dir.bearing).padStart(3,"0")+"°";
+  const wrongs = directions.filter(d=>d.bearing!==dir.bearing)
+    .sort(()=>Math.random()-0.5).slice(0,3)
+    .map(d=>String(d.bearing).padStart(3,"0")+"°");
+  const mcq = buildMCQOptions(ansStr, wrongs);
+  if(!mcq) return makeBearings();
+  return {
+    id: makeID("GEO"), topic: "Geometry & Measure", skill: "Bearings",
+    difficulty: "Foundation / Core",
+    question: `Write down the three-figure bearing for the direction "${dir.desc}".`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Bearings are measured clockwise from North.\n${dir.desc} = ${ansStr}`
+  };
+}
+
+function makeVennTwoSetCount(){
+  const both   = randInt(3,9);
+  const onlyA  = randInt(6,15);
+  const onlyB  = randInt(6,15);
+  const neither= randInt(2,8);
+  const total  = onlyA+both+onlyB+neither;
+  const labels = choice([
+    ["H","T","hockey","tennis"], ["C","B","cars","bicycles"],
+    ["M","E","Maths","English"], ["P","V","piano","violin"]
+  ]);
+  const type = choice(["neither","exactlyOne","union","intersection"]);
+  let ans, question, solution, wrongs;
+
+  if(type==="neither"){
+    ans=String(neither);
+    question=`The Venn diagram shows a group of ${total} people.\nHow many people are in neither set?`;
+    solution=`The number outside both circles is ${neither}.\nSo ${neither} people are in neither set.`;
+    wrongs=[String(onlyA+onlyB),String(both),String(total-neither)];
+  } else if(type==="exactlyOne"){
+    ans=String(onlyA+onlyB);
+    question=`The Venn diagram shows a group of ${total} people.\nHow many people are in exactly one of the two sets?`;
+    solution=`Exactly one set = left only + right only.\n${onlyA} + ${onlyB} = ${onlyA+onlyB}`;
+    wrongs=[String(both),String(onlyA+both+onlyB),String(total)];
+  } else if(type==="union"){
+    ans=String(onlyA+both+onlyB);
+    question=`The Venn diagram shows a group of ${total} people.\nFind n(${labels[0]} ∪ ${labels[1]}).`;
+    solution=`${labels[0]} ∪ ${labels[1]} means in ${labels[0]} or ${labels[1]} or both.\n${onlyA} + ${both} + ${onlyB} = ${onlyA+both+onlyB}`;
+    wrongs=[String(both),String(onlyA+onlyB),String(total)];
+  } else {
+    ans=String(both);
+    question=`The Venn diagram shows a group of ${total} people.\nFind n(${labels[0]} ∩ ${labels[1]}).`;
+    solution=`${labels[0]} ∩ ${labels[1]} means in both sets.\nThe overlap contains ${both}.`;
+    wrongs=[String(onlyA),String(onlyB),String(onlyA+both)];
+  }
+  const mcq = buildMCQOptions(ans, wrongs);
+  if(!mcq) return makeVennTwoSetCount();
+  return {
+    id: makeID("STA"), topic: "Statistics & Probability", skill: "Venn diagrams — two-set counting",
+    difficulty: "Foundation / Core",
+    question, diagram: venn2SVGAQA(labels[0],labels[1],onlyA,both,onlyB,neither),
+    options: mcq.options, correctIndex: mcq.correctIndex, solution
+  };
+}
+
+function makeVennDiagramProbability(){
+  const onlyA=randInt(5,15), both=randInt(3,10), onlyB=randInt(5,15), neither=randInt(2,8);
+  const total=onlyA+both+onlyB+neither;
+  const type=choice(["AandB","AorB","notA"]);
+
+  function fracStr(n,d){
+    const g=gcd(n,d);
+    return n/g===1 && d/g===1 ? "1" : `${n/g}/${d/g}`;
+  }
+
+  if(type==="AandB"){
+    const ans=fracStr(both,total);
+    const mcq = buildMCQOptions(ans, [fracStr(both+1,total),fracStr(onlyA+both,total),fracStr(both,total+1)]);
+    if(!mcq) return makeVennDiagramProbability();
+    return {
+      id: makeID("STA"), topic: "Statistics & Probability", skill: "Venn diagrams — probability",
+      difficulty: "Foundation / Core",
+      question: `In a class of ${total} students:\n• ${onlyA+both} study Maths\n• ${both+onlyB} study Science\n• ${both} study both\n• ${neither} study neither\nOne student is chosen at random.\nFind P(Maths AND Science).`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `P(Maths AND Science) = both ÷ total\n= ${both} ÷ ${total}\n= ${ans}`
+    };
+  }
+  if(type==="AorB"){
+    const n=onlyA+both+onlyB;
+    const ans=fracStr(n,total);
+    const mcq = buildMCQOptions(ans, [fracStr(n+1,total),fracStr(both,total),fracStr(onlyA+onlyB,total)]);
+    if(!mcq) return makeVennDiagramProbability();
+    return {
+      id: makeID("STA"), topic: "Statistics & Probability", skill: "Venn diagrams — probability",
+      difficulty: "Foundation / Core",
+      question: `In a group of ${total} people:\n• ${onlyA} like only tea\n• ${both} like both tea and coffee\n• ${onlyB} like only coffee\n• ${neither} like neither\nFind P(tea OR coffee).`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `P(tea OR coffee) = (only tea + both + only coffee) ÷ total\n= (${onlyA} + ${both} + ${onlyB}) ÷ ${total}\n= ${n}/${total}\n= ${ans}`
+    };
+  }
+  const notA=onlyB+neither;
+  const ans=fracStr(notA,total);
+  const mcq = buildMCQOptions(ans, [fracStr(onlyA+both,total),fracStr(neither,total),fracStr(notA+1,total)]);
+  if(!mcq) return makeVennDiagramProbability();
+  return {
+    id: makeID("STA"), topic: "Statistics & Probability", skill: "Venn diagrams — probability",
+    difficulty: "Foundation / Core",
+    question: `In a class of ${total} students:\n• ${onlyA+both} study Maths\n• ${both+onlyB} study Science\n• ${both} study both\n• ${neither} study neither\nOne student is chosen at random.\nFind P(does NOT study Maths).`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `Students who do NOT study Maths = only Science + neither\n= ${onlyB} + ${neither} = ${notA}\nP(not Maths) = ${notA}/${total} = ${ans}`
+  };
+}
+
+function makeLociAQA(){
+  const type = choice([
+    "equidistant_two_points", "equidistant_two_lines", "fixed_distance_point",
+    "fixed_distance_line", "equidistant_two_lines_angle", "identify_region"
+  ]);
+
+  if(type === "equidistant_two_points"){
+    const mcq = buildMCQOptions(
+      "The perpendicular bisector of the line segment AB",
+      ["A circle with centre A passing through B", "A line parallel to AB", "The angle bisector of angle A"]
+    );
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+      difficulty: "Foundation / Core",
+      question: `Describe the locus of all points that are equidistant from two fixed points A and B.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The set of all points equidistant from A and B forms the perpendicular bisector of AB.\nThis is a straight line that:\n• passes through the midpoint of AB\n• is at 90° to AB`
+    };
+  }
+  if(type === "equidistant_two_lines"){
+    const mcq = buildMCQOptions(
+      "The angle bisector of the angle between the two lines",
+      ["The perpendicular bisector of the two lines", "A circle centred at the point where the lines meet", "A line parallel to both lines"]
+    );
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+      difficulty: "Foundation / Core",
+      question: `Two straight lines meet at a point.\nDescribe the locus of all points that are equidistant from both lines.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The locus of points equidistant from two intersecting lines is the angle bisector.\nThere are actually two angle bisectors, but the principal one bisects the acute angle between the lines.`
+    };
+  }
+  if(type === "fixed_distance_point"){
+    const d = choice([2,3,4,5]);
+    const mcq = buildMCQOptions(
+      `A circle with centre P and radius ${d} cm`,
+      [`A straight line ${d} cm from P`, `Two parallel lines, each ${d} cm from P`, `A square with centre P and side ${d} cm`]
+    );
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+      difficulty: "Foundation / Core",
+      question: `Describe the locus of all points that are exactly ${d} cm from a fixed point P.`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `All points exactly ${d} cm from a fixed point P lie on a circle.\n• Centre: P\n• Radius: ${d} cm`
+    };
+  }
+  if(type === "fixed_distance_line"){
+    const d = choice([2,3,4]);
+    const mcq = buildMCQOptions(
+      `A straight line parallel to AB at a distance of ${d} cm`,
+      [`A circle of radius ${d} cm`, `The perpendicular bisector of AB`, `Two lines at 45° to AB`]
+    );
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+      difficulty: "Foundation / Core",
+      question: `Describe the locus of all points that are exactly ${d} cm from a straight line AB (considering the region on one side).`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `The locus of points a fixed distance from a straight line is a pair of parallel lines — one on each side.\nFor one side only: a single straight line parallel to AB at ${d} cm.`
+    };
+  }
+  if(type === "equidistant_two_lines_angle"){
+    const mcq = buildMCQOptions(
+      "Angle bisector construction",
+      ["Perpendicular bisector construction", "Drawing a circle through both lines", "Constructing a parallel line"]
+    );
+    return {
+      id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+      difficulty: "Foundation / Core",
+      question: `Which construction is used to find all points equidistant from two intersecting lines?`,
+      options: mcq.options, correctIndex: mcq.correctIndex,
+      solution: `To find points equidistant from two lines, use the angle bisector construction:\n1. Open compasses to any radius\n2. Place on the vertex and mark arcs on both lines\n3. From each arc, draw equal arcs that cross\n4. Draw the line through the vertex and crossing point`
+    };
+  }
+  const r = choice([3,4,5]);
+  const mcq = buildMCQOptions(
+    `The interior of a circle with centre P and radius ${r} cm`,
+    [`The circumference of a circle with centre P and radius ${r} cm`, `A square with centre P and side ${r} cm`, `The exterior of a circle with centre P and radius ${r} cm`]
+  );
+  return {
+    id: makeID("GEO"), topic: "Geometry & Measure", skill: "Loci and constructions",
+    difficulty: "Foundation / Core",
+    question: `A point Q moves so that it is always less than ${r} cm from a fixed point P.\nWhich of these best describes the region where Q can be?`,
+    options: mcq.options, correctIndex: mcq.correctIndex,
+    solution: `"Less than ${r} cm from P" means inside the boundary, not on it.\nThe region is the interior (inside) of a circle with:\n• Centre: P\n• Radius: ${r} cm\n(The boundary itself is NOT included.)`
+  };
+}
+
 const TOPIC_MAP = {
   "Number": [
     makeBIDMAS,
@@ -3014,6 +3297,8 @@ const TOPIC_MAP = {
     makeTrigCosQuestion,
     makeTrigTanQuestion,
     makeTransformations,
+    makeBearings,
+    makeLociAQA,
     makeScaleFactorLengthQuestion,
     makeScaleFactorAreaQuestion
   ],
@@ -3034,7 +3319,9 @@ const TOPIC_MAP = {
     makeScatterCorrelation,
     makeIndependentProbability,
     makeMutuallyExclusiveProbability,
-    makeCombinedStatsConditionsQuestion
+    makeCombinedStatsConditionsQuestion,
+    makeVennTwoSetCount,
+    makeVennDiagramProbability
   ]
 };
 
